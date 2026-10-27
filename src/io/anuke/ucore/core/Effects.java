@@ -3,6 +3,7 @@ package io.anuke.ucore.core;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Pool;
 import io.anuke.ucore.entities.impl.EffectEntity;
 import io.anuke.ucore.entities.trait.PosTrait;
 import io.anuke.ucore.entities.trait.ScaleTrait;
@@ -13,6 +14,14 @@ import io.anuke.ucore.util.Pooling;
 public class Effects{
     private static final EffectContainer container = new EffectContainer();
     private static Array<Effect> effects = new Array<>();
+    private static boolean collectLights = true;
+    private static final Array<Light> lights = new Array<>();
+    private static final Pool<Light> lightPool = new Pool<Light>(16, 4096){
+        @Override
+        protected Light newObject(){
+            return new Light();
+        }
+    };
     private static ScreenshakeProvider shakeProvider;
     private static float shakeFalloff = 1000f;
     private static EffectProvider provider = (effect, color, x, y, rotation, data) -> {
@@ -36,6 +45,37 @@ public class Effects{
     public static void renderEffect(int id, Effect render, Color color, float life, float rotation, float x, float y, Object data){
         container.set(id, color, life, render.lifetime, rotation, x, y, data);
         render.draw.render(container);
+    }
+
+    /** Queues a radial light at a world position of the effect*/
+    public static void light(float x, float y, float radius, Color color, float opacity){
+        if(!collectLights) return;
+
+        Light light = lightPool.obtain();
+        light.x = x;
+        light.y = y;
+        light.radius = radius;
+        light.color.set(color);
+        light.opacity = opacity;
+        lights.add(light);
+    }
+
+    /** Enables or disables light collection, e.g. while re-rendering an effect into a secondary buffer. */
+    public static void setLightCollection(boolean value){
+        collectLights = value;
+    }
+
+    /** Lights queued while effects were drawn this frame. */
+    public static Array<Light> lights(){
+        return lights;
+    }
+
+    /** Frees and clears all queued lights. Called at the start of each frame. */
+    public static void clearLights(){
+        for(int i = 0; i < lights.size; i++){
+            lightPool.free(lights.get(i));
+        }
+        lights.clear();
     }
 
     public static Effect getEffect(int id){
@@ -124,8 +164,10 @@ public class Effects{
         public final float lifetime;
         /** Clip size. */
         public float size;
-        /** Whether this effect emits light. */
+        /** Whether this effect emits light */
         public boolean emitLight = false;
+        /** When true, the centre light is skipped */
+        public boolean particleLight = false;
         /** Light radius in world units. */
         public float lightRadius = 0f;
         /** Light opacity. */
@@ -175,6 +217,18 @@ public class Effects{
         @Override
         public float fin(){
             return time / lifetime;
+        }
+    }
+
+    /** A queued point light. */
+    public static class Light implements Pool.Poolable{
+        public float x, y, radius, opacity;
+        public final Color color = new Color();
+
+        @Override
+        public void reset(){
+            x = y = radius = opacity = 0f;
+            color.set(Color.WHITE);
         }
     }
 

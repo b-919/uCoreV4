@@ -210,6 +210,12 @@ public class EntityGroup<T extends Entity>{
         return entityArray;
     }
 
+    /** Returns the backing array with an erased element type. */
+    @SuppressWarnings("unchecked")
+    public Array<Object> allRaw(){
+        return (Array<Object>)(Array)entityArray;
+    }
+
     public void forEach(Consumer<T> cons){
 
         for(T t : entityArray){
