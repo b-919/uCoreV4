@@ -1,5 +1,6 @@
 package io.anuke.ucore.entities;
 
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.IntMap;
 import io.anuke.ucore.entities.trait.Entity;
 import io.anuke.ucore.util.ThreadArray;
@@ -59,7 +60,13 @@ public class Entities{
             EntityQuery.collisions().updatePhysics(group);
         }
 
-        for(Entity e : group.all()){
+        //indexed loop over the backing array: this is one of the hottest loops per frame
+        Array<?> all = group.all();
+        Object[] items = (Object[]) all.items;
+        int size = all.size;
+
+        for(int i = 0; i < size; i++){
+            Entity e = (Entity) items[i];
             if(e.getGroup() != null){
                 e.update();
             }

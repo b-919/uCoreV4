@@ -2,8 +2,10 @@ package io.anuke.ucore.entities;
 
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.utils.Array;
 import io.anuke.ucore.core.Core;
 import io.anuke.ucore.entities.trait.DrawTrait;
+import io.anuke.ucore.entities.trait.Entity;
 import io.anuke.ucore.function.Consumer;
 import io.anuke.ucore.function.Predicate;
 
@@ -35,15 +37,22 @@ public class EntityDraw{
             viewport.set(cam.position.x - cam.viewportWidth / 2 * cam.zoom, cam.position.y - cam.viewportHeight / 2 * cam.zoom, cam.viewportWidth * cam.zoom, cam.viewportHeight * cam.zoom);
         }
 
-        group.forEach(e -> {
-            if(!(e instanceof DrawTrait)) return;
-            T t = (T) e;
+        Array<?> all = group.all();
+        Object[] items = (Object[]) all.items;
+        int size = all.size;
 
-            if(!toDraw.test(t) || !e.isAdded()) return;
+        for(int i = 0; i < size; i++){
+            Object item = items[i];
+
+            if(!(item instanceof DrawTrait)) continue;
+            Entity e = (Entity) item;
+            T t = (T) item;
+
+            if(!toDraw.test(t) || !e.isAdded()) continue;
 
             if(!clip || rect.setSize(((DrawTrait) e).drawSize()).setCenter(e.getX(), e.getY()).overlaps(viewport)){
                 cons.accept(t);
             }
-        });
+        }
     }
 }

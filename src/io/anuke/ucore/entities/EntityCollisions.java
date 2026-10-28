@@ -140,7 +140,12 @@ public class EntityCollisions{
         QuadTree tree = group.tree();
         tree.clear();
 
-        for(Entity entity : group.all()){
+        Array<?> all = group.all();
+        Object[] items = (Object[]) all.items;
+        int size = all.size;
+
+        for(int i = 0; i < size; i++){
+            Entity entity = (Entity) items[i];
             if(entity instanceof SolidTrait){
                 SolidTrait s = (SolidTrait) entity;
                 s.lastPosition().set(s.getX(), s.getY());
@@ -233,7 +238,12 @@ public class EntityCollisions{
 
         collided.clear();
 
-        for(Entity entity : groupa.all()){
+        Array<?> all = groupa.all();
+        Object[] items = (Object[]) all.items;
+        int size = all.size;
+
+        for(int i = 0; i < size; i++){
+            Entity entity = (Entity) items[i];
             if(!(entity instanceof SolidTrait) || collided.contains(entity.getID()))
                 continue;
 
@@ -249,7 +259,8 @@ public class EntityCollisions{
             arrOut.clear();
             groupb.tree().getIntersect(arrOut, r2);
 
-            for(SolidTrait sc : arrOut){
+            for(int j = 0; j < arrOut.size; j++){
+                SolidTrait sc = arrOut.get(j);
                 sc.getHitbox(r1);
                 if(r2.overlaps(r1) && !collided.contains(sc.getID())){
                     checkCollide(entity, sc);

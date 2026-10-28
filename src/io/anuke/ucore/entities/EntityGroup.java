@@ -3,6 +3,7 @@ package io.anuke.ucore.entities;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.IntMap;
+import com.badlogic.gdx.utils.IntSet;
 import io.anuke.ucore.entities.trait.Entity;
 import io.anuke.ucore.function.Consumer;
 import io.anuke.ucore.function.Predicate;
@@ -22,6 +23,7 @@ public class EntityGroup<T extends Entity>{
     private Consumer<T> addListener;
     private Rectangle queryRect = new Rectangle();
     private boolean clearing;
+    private final IntSet removedIDs = new IntSet();
 
     public static int nextId(){
         if(lastid >= Integer.MAX_VALUE - 2) lastid = 0;
@@ -83,12 +85,48 @@ public class EntityGroup<T extends Entity>{
 
         entitiesToAdd.clear();
 
-        for(T e : entitiesToRemove){
-            entityArray.removeValue(e, true);
-            if(map != null){
-                map.remove(e.getID());
+        if(entitiesToRemove.size > 0){
+            //removing each entity with removeValue() is an O(n) identity scan, which turns a wave
+            //of expiring bullets or effects into O(n²). For anything but a couple of removals,
+            //compact the whole array once by id instead.
+            if(entitiesToRemove.size > 4){
+                removedIDs.clear();
+
+                //note: reading Array<T>.items through the generic type would make javac emit a
+                //cast to T[] (Entity[]), which fails because gdx allocates an Object[]; read it
+                //once into an Object[] local instead
+                Object[] items = (Object[]) entityArray.items;
+                Object[] removeItems = (Object[]) entitiesToRemove.items;
+                int size = entityArray.size;
+
+                for(int i = 0; i < entitiesToRemove.size; i++){
+                    removedIDs.add(((Entity) removeItems[i]).getID());
+                }
+
+                int write = 0;
+                for(int i = 0; i < size; i++){
+                    Object e = items[i];
+                    if(e != null && !removedIDs.contains(((Entity) e).getID())){
+                        items[write++] = e;
+                    }
+                }
+
+                //drop stale references in the tail so removed entities are not kept alive
+                java.util.Arrays.fill(items, write, size, null);
+                entityArray.size = write;
+                removedIDs.clear();
+            }else{
+                for(T e : entitiesToRemove){
+                    entityArray.removeValue(e, true);
+                }
             }
-            e.removed();
+
+            for(T e : entitiesToRemove){
+                if(map != null){
+                    map.remove(e.getID());
+                }
+                e.removed();
+            }
         }
 
         entitiesToRemove.clear();

@@ -6,7 +6,7 @@ import io.anuke.ucore.function.Supplier;
 
 /** A thread-safe wrapper for Pooling. */
 public class Pooling{
-    static private final int max = 100;
+    static private final int max = 1024;
     static private final ObjectMap<Class, Pool> typePools = new ObjectMap();
 
     public static synchronized void free (Object object) {
